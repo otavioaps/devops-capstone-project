@@ -18,7 +18,7 @@ spec:
         app: accounts
     spec:
       containers:
-      - image: us.icr.io/sn-labs-osilva/accounts:1
+      - image: http://image-registry.openshift-image-registry.svc:5000/$SN_ICR_NAMESPACE/accounts:latest
         name: accounts
         resources: {}
         
@@ -40,4 +40,23 @@ spec:
               secretKeyRef:
                 name: postgresql
                 key: database-user
+          - name: deploy
+            workspaces:
+              - name: manifest-dir
+                workspace: pipeline-workspace
+            taskRef:
+              name: openshift-client
+              kind: ClusterTask
+            params:
+            - name: SCRIPT
+              value: |
+                echo "Updating manifest..."
+                sed -i "s|http://image-registry.openshift-image-registry.svc:5000/$SN_ICR_NAMESPACE/accounts:latest|$(params.build-image)|g" deploy/deployment.yaml
+                cat deploy/deployment.yaml
+                echo "Deploying to OpenShift..."
+                oc apply -f deploy/
+                oc get pods -l app=accounts
+            runAfter:
+              - build        
+                
 status: {}
